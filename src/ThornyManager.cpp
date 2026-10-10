@@ -424,18 +424,16 @@ std::string ThornyManager::dialogueForEvent(ThornyEvent event, ThornyContext con
 void ThornyManager::onSettingChanged() {
     ThornySettings::get().applySettings();
 
-    if (!ThornySettings::get().enabled()) {
-        removeThorny();
-        return;
-    }
-
     // Setting listeners fire from inside Geode's setting-application code (and,
     // on Android, possibly while the game is mid-frame). Starting/stopping the
     // movement actions from there re-enters the cocos2d action manager and can
-    // crash, so all node work is deferred to the next main-thread tick.
+    // crash, so all node work - including removal - is deferred to the next
+    // main-thread tick.
     geode::queueInMainThread([]() {
         auto& manager = ThornyManager::get();
+
         if (!ThornySettings::get().enabled()) {
+            manager.removeThorny();
             return;
         }
 
