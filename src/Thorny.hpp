@@ -66,6 +66,7 @@ private:
     void buildSprite();
     void buildBubble();
     void refreshScreenBounds();
+    void positionAtSpawn();
     void chooseNextDestination();
 
     // -- scheduled callbacks --
@@ -103,6 +104,7 @@ private:
     cocos2d::CCRect m_bounds = cocos2d::CCRectZero;
 
     bool m_movementStarted = false;
+    bool m_pendingDestination = false;
     bool m_isSleeping = false;
 
     // Chatter timing.

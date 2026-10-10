@@ -145,12 +145,41 @@ void Thorny::buildBubble() {
 
 void Thorny::onEnter() {
     CCNode::onEnter();
+
+    // Place Thorny before anything else: with movement disabled he would
+    // otherwise stay at the parent's origin, i.e. the bottom-left corner.
+    refreshScreenBounds();
+    positionAtSpawn();
+
     this->schedule(schedule_selector(Thorny::updateMovement), 0.0f);
     this->schedule(schedule_selector(Thorny::updateChatter), 1.0f);
 
-    refreshScreenBounds();
     startBob();
     startMovement();
+}
+
+void Thorny::positionAtSpawn() {
+    if (m_bounds.size.width > 0.0f) {
+        float startX = randomRange(m_bounds.origin.x, m_bounds.origin.x + m_bounds.size.width);
+        float startY = randomRange(m_bounds.origin.y, m_bounds.origin.y + m_bounds.size.height);
+        this->setPosition(startX, startY);
+        return;
+    }
+
+    // Bounds are not known yet (very early frame). Park Thorny in the middle of
+    // the visible area rather than the parent's (0,0) corner.
+    auto* director = CCDirector::get();
+    if (!director) {
+        return;
+    }
+    auto origin = director->getVisibleOrigin();
+    auto size = director->getVisibleSize();
+    if (auto* parent = this->getParent()) {
+        auto parentOrigin = parent->convertToWorldSpace(cocos2d::CCPointZero);
+        origin.x -= parentOrigin.x;
+        origin.y -= parentOrigin.y;
+    }
+    this->setPosition(origin.x + size.width * 0.5f, origin.y + size.height * 0.5f);
 }
 
 void Thorny::onExit() {
@@ -229,39 +258,18 @@ void Thorny::chooseNextDestination() {
     }
 
     auto eased = CCEaseSineInOut::create(move);
+    // IMPORTANT: do NOT cancel our own action from inside this callback. The
+    // sequence is still the action being updated; releasing it here would free
+    // the running action mid-update and crash. We only flag that the next hop
+    // is due and let updateMovement() schedule it after the pump has unwound.
     auto done = CallFuncExt::create([this]() {
-        // Re-check bounds each hop in case the scene size changed.
-        refreshScreenBounds();
-        chooseNextDestination();
+        m_pendingDestination = true;
     });
+
     this->stopActionByTag(kTagMove);
     auto sequence = CCSequence::create(eased, done, nullptr);
     sequence->setTag(kTagMove);
     this->runAction(sequence);
-}
-
-void Thorny::startMovement() {
-    if (m_movementStarted) {
-        return;
-    }
-    if (!ThornySettings::get().movementEnabled()) {
-        return;
-    }
-    m_movementStarted = true;
-    refreshScreenBounds();
-
-    if (m_bounds.size.width > 0.0f) {
-        float startX = randomRange(m_bounds.origin.x, m_bounds.origin.x + m_bounds.size.width);
-        float startY = randomRange(m_bounds.origin.y, m_bounds.origin.y + m_bounds.size.height);
-        this->setPosition(startX, startY);
-    }
-    setState(ThornyState::Flying);
-    chooseNextDestination();
-}
-
-void Thorny::stopMovement() {
-    m_movementStarted = false;
-    this->stopActionByTag(kTagMove);
 }
 
 void Thorny::updateMovement(float dt) {
@@ -274,7 +282,37 @@ void Thorny::updateMovement(float dt) {
     }
     if (!m_movementStarted) {
         startMovement();
+        return;
     }
+    if (m_pendingDestination) {
+        m_pendingDestination = false;
+        // Re-check bounds each hop in case the scene size changed.
+        refreshScreenBounds();
+        chooseNextDestination();
+    }
+}
+
+void Thorny::startMovement() {
+    if (m_movementStarted) {
+        return;
+    }
+    if (!ThornySettings::get().movementEnabled()) {
+        return;
+    }
+    m_movementStarted = true;
+    m_pendingDestination = false;
+    refreshScreenBounds();
+
+    // Position is handled by positionAtSpawn(); here we simply start hopping.
+    // If the bounds only became known now, the first hop flies Thorny into them.
+    setState(ThornyState::Flying);
+    chooseNextDestination();
+}
+
+void Thorny::stopMovement() {
+    m_movementStarted = false;
+    m_pendingDestination = false;
+    this->stopActionByTag(kTagMove);
 }
 
 // --------------------------------------------------------------------------- animations
