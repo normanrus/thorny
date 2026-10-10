@@ -35,10 +35,13 @@ that lives in the main menu. See README.md for user-facing docs.
 - The speech bubble is a plain `CCNode`, NOT a `CCLayer`. A geometry-dash
   `CCLayer` has screen-sized content with a centre anchor, so
   `bubble->convertToWorldSpace()` returns `local - halfScreen`; using that to
-  clamp made the bubble fly far from Thorny. Do all bubble positioning in the
-  parent space (the same space `refreshScreenBounds` builds), never via
-  `convertToWorldSpace`. Hide it until a line is shown, else an empty bubble
-  frame reads as a second, detached sprite.
+  position/clamp made the bubble fly far from Thorny. Do all bubble positioning
+  in the parent space, never via `convertToWorldSpace`. Hide it until a line is
+  shown, else an empty bubble frame reads as a second, detached sprite.
+- Clamp the bubble horizontally against the REAL visible screen rect
+  (`visibleRectInParent(6, 6)`), not `m_bounds`. `m_bounds` is the padded flight
+  area, so clamping to it shoved a centred bubble sideways by roughly its own
+  half-width whenever Thorny sat near a screen edge.
 - Sit the bubble just above the sprite by measuring the sprite and clamping the
   half-height into a tight band (`[12, 24]`). `getContentSize()` can disagree
   with what is actually drawn across Geode's `-hd`/`-uhd` asset scales, so never

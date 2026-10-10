@@ -72,6 +72,9 @@ private:
     void buildSprite();
     void buildBubble();
     void refreshScreenBounds();
+    // The visible screen rect expressed in the parent's coordinate space, inset
+    // by the given margins. Returns CCRectZero if it cannot be determined.
+    cocos2d::CCRect visibleRectInParent(float marginX, float marginY);
     void positionAtSpawn();
     void scheduleNextHop();
 

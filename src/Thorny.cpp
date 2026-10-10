@@ -235,19 +235,27 @@ void Thorny::onExit() {
 // --------------------------------------------------------------------------- movement
 
 void Thorny::refreshScreenBounds() {
+    // Movement bounds: the visible screen inset by the padding.
+    m_bounds = visibleRectInParent(kPaddingX, kPaddingY);
+}
+
+cocos2d::CCRect Thorny::visibleRectInParent(float marginX, float marginY) {
     auto* director = CCDirector::get();
     if (!director) {
-        return;
+        return cocos2d::CCRectZero;
     }
     auto size = director->getVisibleSize();
     auto origin = director->getVisibleOrigin();
+    if (size.width <= 0.0f || size.height <= 0.0f) {
+        return cocos2d::CCRectZero;
+    }
 
-    // Build the bounds in the parent's coordinate space, so this works for any
+    // Build the rect in the parent's coordinate space, so this works for any
     // resolution / safe area without hard-coded numbers.
-    float minX = origin.x + kPaddingX;
-    float maxX = origin.x + size.width - kPaddingX;
-    float minY = origin.y + kPaddingY;
-    float maxY = origin.y + size.height - kPaddingY;
+    float minX = origin.x + marginX;
+    float maxX = origin.x + size.width - marginX;
+    float minY = origin.y + marginY;
+    float maxY = origin.y + size.height - marginY;
 
     if (auto* parent = this->getParent()) {
         auto parentOrigin = parent->convertToWorldSpace(cocos2d::CCPointZero);
@@ -257,14 +265,11 @@ void Thorny::refreshScreenBounds() {
         maxY -= parentOrigin.y;
     }
 
-    if (maxX <= minX) {
-        maxX = minX + 1.0f;
-    }
-    if (maxY <= minY) {
-        maxY = minY + 1.0f;
+    if (maxX <= minX || maxY <= minY) {
+        return cocos2d::CCRectZero;
     }
 
-    m_bounds = cocos2d::CCRect(minX, minY, maxX - minX, maxY - minY);
+    return cocos2d::CCRect(minX, minY, maxX - minX, maxY - minY);
 }
 
 void Thorny::scheduleNextHop() {
@@ -593,19 +598,22 @@ void Thorny::layoutBubble(std::string const& text) {
     }
 
     // Tail tip sits just past the sprite's top; the bubble centre then follows
-    // from the bubble's own height and the tail length.
+    // from the bubble's own height and the tail length. The bubble is centred
+    // over Thorny: it only ever moves off-centre to stay on screen, never to
+    // "avoid" a padded area.
     constexpr float kTailTipGap = 2.0f;
     float bubbleCenterY = spriteHalfHeight + kTailTipGap + bubbleHeight / 2.0f + tailHeight;
 
-    // Work in the same coordinate space as the movement bounds: the visible rect
-    // expressed in the parent's space. Do not use convertToWorldSpace here - it
-    // is not reliable for a freshly added node and can throw the bubble far away.
-    refreshScreenBounds();
-    auto const& bounds = m_bounds;
+    // Clamp against the real visible screen, NOT the padded movement bounds:
+    // the movement padding would otherwise shove a centred bubble sideways
+    // whenever Thorny sits near a screen edge.
+    constexpr float kScreenMargin = 6.0f;
+    auto screen = visibleRectInParent(kScreenMargin, kScreenMargin);
+    bool haveScreen = screen.size.width > 0.0f && screen.size.height > 0.0f;
 
     bool flip = false;
-    if (bounds.size.height > 0.0f &&
-        this->getPositionY() + bubbleCenterY > bounds.origin.y + bounds.size.height) {
+    if (haveScreen &&
+        this->getPositionY() + bubbleCenterY > screen.origin.y + screen.size.height) {
         flip = true;
     }
 
@@ -625,14 +633,14 @@ void Thorny::layoutBubble(std::string const& text) {
     }
 
     // Keep the bubble from leaving the screen horizontally.
-    if (bounds.size.width > 0.0f) {
+    if (haveScreen) {
         float halfWidth = bubbleWidth / 2.0f;
         float thornyX = this->getPositionX();
         float offsetX = 0.0f;
-        if (thornyX - halfWidth < bounds.origin.x) {
-            offsetX = bounds.origin.x - (thornyX - halfWidth);
-        } else if (thornyX + halfWidth > bounds.origin.x + bounds.size.width) {
-            offsetX = (bounds.origin.x + bounds.size.width) - (thornyX + halfWidth);
+        if (thornyX - halfWidth < screen.origin.x) {
+            offsetX = screen.origin.x - (thornyX - halfWidth);
+        } else if (thornyX + halfWidth > screen.origin.x + screen.size.width) {
+            offsetX = (screen.origin.x + screen.size.width) - (thornyX + halfWidth);
         }
         auto pos = m_bubble->getPosition();
         m_bubble->setPosition(cocos2d::CCPoint(pos.x + offsetX, pos.y));
