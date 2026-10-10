@@ -39,5 +39,7 @@ that lives in the main menu. See README.md for user-facing docs.
   parent space (the same space `refreshScreenBounds` builds), never via
   `convertToWorldSpace`. Hide it until a line is shown, else an empty bubble
   frame reads as a second, detached sprite.
-- Sit the bubble just past the sprite using `m_sprite->getContentSize().height *
-  scale`, not a fixed pixel gap, so the gap scales with the sprite size.
+- Sit the bubble just above the sprite by measuring the sprite and clamping the
+  half-height into a tight band (`[12, 24]`). `getContentSize()` can disagree
+  with what is actually drawn across Geode's `-hd`/`-uhd` asset scales, so never
+  trust the raw value; a fixed pixel gap goes stale when the size setting moves.

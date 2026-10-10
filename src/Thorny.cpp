@@ -575,15 +575,27 @@ void Thorny::layoutBubble(std::string const& text) {
     m_bubbleLabel->setPosition(cocos2d::CCPointZero);
 
     constexpr float tailHeight = 10.0f;
-    // Sit the bubble just past the sprite, using the real sprite size so the gap
-    // scales with the sprite and can never look detached.
-    float spriteHeight = 48.0f;
-    if (m_sprite) {
-        spriteHeight = m_sprite->getContentSize().height * m_sprite->getScale();
-    }
-    float gap = spriteHeight * 0.5f + 6.0f;
 
-    float halfHeight = bubbleHeight / 2.0f + tailHeight;
+    // Distance from Thorny's centre up to his sprite's top. getContentSize() can
+    // disagree with what is actually drawn (asset-scale mismatch), which would
+    // push the bubble too high, so clamp it into a tight band instead of
+    // trusting it. The bubble then always sits just above the sprite.
+    constexpr float kMinSpriteHalf = 12.0f;
+    constexpr float kMaxSpriteHalf = 24.0f;
+    float spriteHalfHeight = kMaxSpriteHalf;
+    if (m_sprite) {
+        spriteHalfHeight = m_sprite->getContentSize().height * m_sprite->getScale() * 0.5f;
+    }
+    if (spriteHalfHeight < kMinSpriteHalf) {
+        spriteHalfHeight = kMinSpriteHalf;
+    } else if (spriteHalfHeight > kMaxSpriteHalf) {
+        spriteHalfHeight = kMaxSpriteHalf;
+    }
+
+    // Tail tip sits just past the sprite's top; the bubble centre then follows
+    // from the bubble's own height and the tail length.
+    constexpr float kTailTipGap = 2.0f;
+    float bubbleCenterY = spriteHalfHeight + kTailTipGap + bubbleHeight / 2.0f + tailHeight;
 
     // Work in the same coordinate space as the movement bounds: the visible rect
     // expressed in the parent's space. Do not use convertToWorldSpace here - it
@@ -592,20 +604,20 @@ void Thorny::layoutBubble(std::string const& text) {
     auto const& bounds = m_bounds;
 
     bool flip = false;
-    float bubbleY = this->getPositionY() + gap + halfHeight;
-    if (bounds.size.height > 0.0f && bubbleY > bounds.origin.y + bounds.size.height) {
+    if (bounds.size.height > 0.0f &&
+        this->getPositionY() + bubbleCenterY > bounds.origin.y + bounds.size.height) {
         flip = true;
     }
 
     if (flip) {
         // Bubble hangs below Thorny; the tail is mirrored to point up at him.
-        m_bubble->setPosition(cocos2d::CCPoint(0.0f, -(gap + halfHeight)));
+        m_bubble->setPosition(cocos2d::CCPoint(0.0f, -bubbleCenterY));
         if (m_bubbleTail) {
             m_bubbleTail->setScaleY(-1.0f);
             m_bubbleTail->setPosition(cocos2d::CCPoint(0.0f, bubbleHeight / 2.0f + tailHeight / 2.0f - 1.0f));
         }
     } else {
-        m_bubble->setPosition(cocos2d::CCPoint(0.0f, gap + halfHeight));
+        m_bubble->setPosition(cocos2d::CCPoint(0.0f, bubbleCenterY));
         if (m_bubbleTail) {
             m_bubbleTail->setScaleY(1.0f);
             m_bubbleTail->setPosition(cocos2d::CCPoint(0.0f, -bubbleHeight / 2.0f - tailHeight / 2.0f + 1.0f));
