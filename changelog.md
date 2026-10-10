@@ -2,6 +2,13 @@
 
 All notable changes to Thorny. Versions follow the released tags.
 
+## 1.0.9
+
+- Fixed the speech bubble sitting to the right of (and slightly above) Thorny.
+  The horizontal clamp used the padded flight area instead of the screen edge,
+  so a centred bubble was pushed sideways by roughly its own half-width when
+  Thorny was left of centre.
+
 ## 1.0.7
 
 - Fixed the speech bubble floating well above Thorny. The sprite's reported
