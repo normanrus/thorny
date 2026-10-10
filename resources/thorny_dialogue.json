@@ -1,0 +1,153 @@
+{
+	"_comment": "Thorny's dialogue database. 'en' and 'ru' are the only supported languages. Categories map to ThornyEvent groups; see ThornyDialogue.hpp.",
+	"languages": {
+		"en": {
+			"generic": [
+				"Just spike things.",
+				"Sharp, but friendly.",
+				"I like it here.",
+				"Nice menu, huh?",
+				"Tap a level. Any level."
+			],
+			"greeting": [
+				"Hi! I'm Thorny.",
+				"I'm Thorny. Nice to meet you.",
+				"Hello! I live here now.",
+				"First time? I'm Thorny."
+			],
+			"level_started": [
+				"Good luck!",
+				"Don't die.",
+				"You've got this!",
+				"Another attempt?",
+				"Let's see how long you survive.",
+				"Careful out there."
+			],
+			"level_failed": [
+				"That was painful.",
+				"So... another attempt?",
+				"The spikes won.",
+				"Close enough.",
+				"You almost had it!",
+				"Rough one. Go again?",
+				"Happens to everyone."
+			],
+			"level_completed": [
+				"YOU DID IT!",
+				"Nice!",
+				"Finally!",
+				"That was clean!",
+				"GG!",
+				"I knew you could do it!"
+			],
+			"editor_entered": [
+				"Building something?",
+				"Have fun in there.",
+				"Creator mode, huh?"
+			],
+			"editor_exited": [
+				"Back from the editor?",
+				"Did you build something amazing?",
+				"Another masterpiece?",
+				"How many objects this time?"
+			],
+			"editor_modified": [
+				"Looks like you changed something.",
+				"Don't forget to save!",
+				"Another update?"
+			],
+			"returning_to_menu": [
+				"Welcome back.",
+				"Back so soon?",
+				"Missed me?"
+			],
+			"idle": [
+				"Are you still there?",
+				"Take your time.",
+				"I'll just hover here.",
+				"Any level in mind?",
+				"Still deciding?"
+			],
+			"sleeping": [
+				"Zzz... wake me when you pick a level.",
+				"I'll nap for a bit.",
+				"Wake me up for the hard ones.",
+				"*yawn* Still here."
+			]
+		},
+		"ru": {
+			"generic": [
+				"Просто шипастые дела.",
+				"Острый, но дружелюбный.",
+				"Мне тут нравится.",
+				"Неплохое меню, да?",
+				"Выбирай уровень. Любой."
+			],
+			"greeting": [
+				"Привет! Я Шипастик.",
+				"Я Шипастик. Приятно познакомиться.",
+				"Привет! Теперь я тут живу.",
+				"Впервые здесь? Я Шипастик."
+			],
+			"level_started": [
+				"Удачи!",
+				"Только не умри.",
+				"У тебя получится!",
+				"Опять попытка?",
+				"Посмотрим, сколько ты проживёшь.",
+				"Осторожнее там."
+			],
+			"level_failed": [
+				"Это было больно.",
+				"Ну... ещё попытка?",
+				"Шипы победили.",
+				"Почти получилось.",
+				"Ты почти смог!",
+				"Жёстко. Ещё раз?",
+				"Бывает с каждым."
+			],
+			"level_completed": [
+				"ТЫ ЭТО СДЕЛАЛ!",
+				"Красиво!",
+				"Наконец-то!",
+				"Чисто!",
+				"GG!",
+				"Я знал, что ты сможешь!"
+			],
+			"editor_entered": [
+				"Что-то строишь?",
+				"Веселись там.",
+				"Режим создателя, да?"
+			],
+			"editor_exited": [
+				"Вернулся из редактора?",
+				"Создал что-нибудь великое?",
+				"Ещё один шедевр?",
+				"Сколько объектов на этот раз?"
+			],
+			"editor_modified": [
+				"Похоже, ты что-то изменил.",
+				"Не забудь сохранить!",
+				"Ещё одно обновление?"
+			],
+			"returning_to_menu": [
+				"С возвращением.",
+				"Так быстро вернулся?",
+				"Скучал по мне?"
+			],
+			"idle": [
+				"Ты ещё здесь?",
+				"Не спеши.",
+				"Я просто повишу тут.",
+				"Есть уровень на примете?",
+				"Всё ещё выбираешь?"
+			],
+			"sleeping": [
+				"Хрр... разбуди, когда выберешь уровень.",
+				"Я вздремну немного.",
+				"Разбуди меня для сложных.",
+				"*зевает* Всё ещё здесь."
+			]
+		}
+	}
+}

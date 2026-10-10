@@ -1,0 +1,19 @@
+# Build output
+build/
+build-*/
+cmake-build-*/
+*.geode
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# IDEs / editors
+.vscode/
+.idea/
+*.user
+
+# Local dev scratch
+.agent_tmp/

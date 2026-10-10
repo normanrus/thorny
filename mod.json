@@ -1,0 +1,85 @@
+{
+	"geode": "5.11.1",
+	"gd": {
+		"win": "2.2081",
+		"mac": "2.2081",
+		"android": "2.2081",
+		"ios": "2.2081"
+	},
+	"id": "norman.thorny",
+	"name": "Thorny",
+	"version": "v1.0.0",
+	"developer": "NormanRus",
+	"description": "A little spike companion that reacts to what you do in Geometry Dash.",
+	"repository": "https://github.com/NormanRus/Thorny",
+	"settings": {
+		"general-title": {
+			"type": "title",
+			"name": "Thorny"
+		},
+		"enabled": {
+			"type": "bool",
+			"name": "Thorny enabled",
+			"description": "Show the Thorny companion in the main menu.",
+			"default": true
+		},
+		"movement": {
+			"type": "bool",
+			"name": "Movement",
+			"description": "Let Thorny fly around the main menu.",
+			"default": true
+		},
+		"dialogue-title": {
+			"type": "title",
+			"name": "Dialogue"
+		},
+		"dialogue": {
+			"type": "bool",
+			"name": "Dialogue",
+			"description": "Let Thorny talk.",
+			"default": true
+		},
+		"dialogue-frequency": {
+			"type": "string",
+			"name": "Dialogue frequency",
+			"description": "How often Thorny is allowed to talk.",
+			"default": "Normal",
+			"one-of": [
+				"Rare",
+				"Normal",
+				"Frequent"
+			]
+		},
+		"language": {
+			"type": "string",
+			"name": "Language",
+			"description": "Language used for Thorny's lines.",
+			"default": "Auto",
+			"one-of": [
+				"Auto",
+				"English",
+				"Russian"
+			]
+		}
+	},
+	"resources": {
+		"sprites": [
+			"resources/thorny/*.png"
+		],
+		"fonts": {
+			"ThornyFont": {
+				"path": "resources/fonts/ThornyFont.ttf",
+				"size": 48,
+				"outline": 2,
+				"charset": "32-126,1024-1119,8212,8216,8217,8220,8221,8226,8230"
+			}
+		},
+		"files": [
+			"resources/thorny_dialogue.json"
+		]
+	},
+	"tags": [
+		"universal",
+		"interface"
+	]
+}
