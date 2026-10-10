@@ -52,16 +52,16 @@ public:
 private:
     ThornyManager() = default;
 
-    void spawnThorny(cocos2d::CCLayer* menu);
+    void spawnThorny(cocos2d::CCNode* menu);
     void removeThorny();
+    // The live Thorny node, resolved through the current scene (or nullptr).
+    Thorny* currentThorny() const;
     void finalizeEditorExit();
     ThornyEvent resolveMenuEvent(bool firstLaunch);
     DialogueCategory resolveCategory(ThornyEvent event, ThornyContext const* context) const;
     void clearTransientContext();
 
     ThornyDialogue m_dialogue;
-    geode::WeakRef<Thorny> m_thorny;
-    geode::WeakRef<cocos2d::CCLayer> m_menu;
 
     // Editor bookkeeping. We never write into game memory; we only latch
     // whether the editor was open, whether it was modified, and whether a

@@ -121,7 +121,6 @@ void ThornyManager::onMainMenuEntered(cocos2d::CCLayer* menu) {
     }
 
     log::info("[Thorny] Main menu entered");
-    m_menu = menu;
 
     // If the player was in the editor and came back, this is where we notice
     // it: the editor is gone and no level was started in between.
@@ -140,9 +139,11 @@ void ThornyManager::onMainMenuEntered(cocos2d::CCLayer* menu) {
         m_context.pushEvent(event);
     }
 
+    // Spawn directly onto the layer we were just handed by the hook. We never
+    // cache this pointer anywhere.
     spawnThorny(menu);
 
-    if (auto thorny = m_thorny.lock()) {
+    if (auto* thorny = currentThorny()) {
         thorny->onEvent(m_context.lastEvent, m_context);
     }
 
@@ -166,8 +167,12 @@ void ThornyManager::finalizeEditorExit() {
     m_editorPlaytesting = false;
 }
 
-void ThornyManager::spawnThorny(cocos2d::CCLayer* menu) {
+void ThornyManager::spawnThorny(cocos2d::CCNode* menu) {
     removeThorny();
+
+    if (!menu) {
+        return;
+    }
 
     // Skip if a previous Thorny is somehow still present.
     if (menu->getChildByIDRecursive("thorny-spike"_spr)) {
@@ -181,15 +186,24 @@ void ThornyManager::spawnThorny(cocos2d::CCLayer* menu) {
     }
 
     menu->addChild(thorny, 1000);
-    m_thorny = thorny;
     log::debug("[Thorny] Spawned Thorny");
 }
 
 void ThornyManager::removeThorny() {
-    if (auto thorny = m_thorny.lock()) {
+    if (auto* thorny = currentThorny()) {
         thorny->removeFromParentAndCleanup(true);
     }
-    m_thorny = nullptr;
+}
+
+Thorny* ThornyManager::currentThorny() const {
+    // Resolve Thorny through the live scene every time instead of holding a
+    // pointer. `getChildByIDRecursive` does a setLookup, so this is cheap and it
+    // can never return a node that belongs to a destroyed scene.
+    auto* menu = Thorny::findMainMenu();
+    if (!menu) {
+        return nullptr;
+    }
+    return geode::cast::typeinfo_cast<Thorny*>(menu->getChildByIDRecursive("thorny-spike"_spr));
 }
 
 ThornyEvent ThornyManager::resolveMenuEvent(bool firstLaunch) {
@@ -425,15 +439,22 @@ void ThornyManager::onSettingChanged() {
             return;
         }
 
-        if (auto menu = manager.m_menu.lock()) {
-            if (!menu->getChildByIDRecursive("thorny-spike"_spr)) {
-                manager.spawnThorny(menu);
-                if (auto thorny = manager.m_thorny.lock()) {
-                    thorny->onEvent(ThornyEvent::EnteredMainMenu, manager.m_context);
-                }
-            } else if (auto thorny = manager.m_thorny.lock()) {
-                thorny->applySettings();
+        // Re-resolve the live menu. We must never trust a stored menu pointer:
+        // after a scene change a freed MenuLayer's memory can be reused, so a
+        // stale pointer would still pass a WeakRef lock and then crash when we
+        // add a child to whatever now lives there.
+        auto* menu = Thorny::findMainMenu();
+        if (!menu) {
+            return;
+        }
+
+        if (!menu->getChildByIDRecursive("thorny-spike"_spr)) {
+            manager.spawnThorny(menu);
+            if (auto* thorny = manager.currentThorny()) {
+                thorny->onEvent(ThornyEvent::EnteredMainMenu, manager.m_context);
             }
+        } else if (auto* thorny = manager.currentThorny()) {
+            thorny->applySettings();
         }
     });
 }

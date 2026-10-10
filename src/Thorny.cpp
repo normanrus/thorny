@@ -5,6 +5,7 @@
 #include "ThornySettings.hpp"
 
 #include <Geode/utils/cocos.hpp>
+#include <Geode/binding/MenuLayer.hpp>
 
 #include <random>
 
@@ -56,6 +57,27 @@ Thorny* Thorny::create() {
     }
     delete ret;
     return nullptr;
+}
+
+cocos2d::CCNode* Thorny::findMainMenu() {
+    auto* director = CCDirector::get();
+    if (!director) {
+        return nullptr;
+    }
+    auto* scene = director->getRunningScene();
+    if (!scene) {
+        return nullptr;
+    }
+
+    // Default fast path: GD replaces the whole scene when it opens the menu.
+    if (auto* menu = scene->getChildByType<MenuLayer>()) {
+        return menu;
+    }
+
+    // Fallback for the rare case where the menu is not the scene's direct child
+    // (it is still somewhere in the active tree, so it is definitely alive).
+    return geode::cocos::findFirstChildRecursive<MenuLayer>(
+        scene, [](MenuLayer*) { return true; });
 }
 
 bool Thorny::init() {
@@ -115,6 +137,9 @@ void Thorny::buildBubble() {
     m_bubble->ignoreAnchorPointForPosition(false);
     m_bubble->setAnchorPoint(cocos2d::CCPoint(0.5f, 0.5f));
     m_bubble->setPosition(cocos2d::CCPointZero);
+    // Hidden until Thorny actually says something; an empty bubble frame sitting
+    // on his head at spawn would read as a detached second sprite.
+    m_bubble->setVisible(false);
     this->addChild(m_bubble);
 
     auto bubbleTexture = CCTextureCache::sharedTextureCache()->addImage("thorny_bubble_001.png"_spr, false);

@@ -47,6 +47,12 @@ public:
     // Settings were changed at runtime; re-apply what can be applied live.
     void applySettings();
 
+    // Resolve the live main menu from the current running scene, or nullptr if
+    // the player is not in the main menu right now. Never cache the result:
+    // storing a game node pointer across scene transitions is unsafe because a
+    // freed layer's memory can be reused, making a stale pointer still "lock".
+    static cocos2d::CCNode* findMainMenu();
+
     ThornyState state() const { return m_state; }
 
     // Tell Thorny the player did something, resetting the idle/sleep timer.

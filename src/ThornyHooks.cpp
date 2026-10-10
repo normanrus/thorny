@@ -17,8 +17,9 @@ using namespace geode::prelude;
 //
 // We deliberately do NOT hook MenuLayer::onExit: MenuLayer does not override
 // onExit, so it has no address in the bindings and the override would never be
-// called. Instead Thorny (our own class) cleans itself up in Thorny::onExit and
-// tells the manager, and the manager only keeps WeakRefs to the menu.
+// called. Instead Thorny (our own class) cleans itself up in Thorny::onExit, and
+// the manager never stores a menu pointer at all - it finds the live scene when
+// it needs one.
 // ---------------------------------------------------------------------------
 class $modify(ThornyMenuLayer, MenuLayer) {
     bool init() {
