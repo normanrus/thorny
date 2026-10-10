@@ -52,7 +52,10 @@ public:
 private:
     ThornyManager() = default;
 
-    void spawnThorny(cocos2d::CCNode* menu);
+    // Creates Thorny on the given layer and returns him, or nullptr if he was
+    // not created. Returns the node directly because during MenuLayer::init the
+    // layer is not yet the running scene, so a scene lookup would fail.
+    Thorny* spawnThorny(cocos2d::CCNode* menu);
     void removeThorny();
     // The live Thorny node, resolved through the current scene (or nullptr).
     Thorny* currentThorny() const;

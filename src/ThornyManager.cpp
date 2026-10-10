@@ -139,11 +139,10 @@ void ThornyManager::onMainMenuEntered(cocos2d::CCLayer* menu) {
         m_context.pushEvent(event);
     }
 
-    // Spawn directly onto the layer we were just handed by the hook. We never
-    // cache this pointer anywhere.
-    spawnThorny(menu);
-
-    if (auto* thorny = currentThorny()) {
+    // Spawn directly onto the layer we were just handed by the hook, and react
+    // on the node it returns. During MenuLayer::init the layer is not yet the
+    // running scene, so currentThorny() would not find him.
+    if (auto* thorny = spawnThorny(menu)) {
         thorny->onEvent(m_context.lastEvent, m_context);
     }
 
@@ -167,26 +166,28 @@ void ThornyManager::finalizeEditorExit() {
     m_editorPlaytesting = false;
 }
 
-void ThornyManager::spawnThorny(cocos2d::CCNode* menu) {
+Thorny* ThornyManager::spawnThorny(cocos2d::CCNode* menu) {
     removeThorny();
 
     if (!menu) {
-        return;
+        return nullptr;
     }
 
-    // Skip if a previous Thorny is somehow still present.
-    if (menu->getChildByIDRecursive("thorny-spike"_spr)) {
-        return;
+    // Skip if a previous Thorny is somehow still present on this layer.
+    if (auto* existing = geode::cast::typeinfo_cast<Thorny*>(
+            menu->getChildByIDRecursive("thorny-spike"_spr))) {
+        return existing;
     }
 
     auto thorny = Thorny::create();
     if (!thorny) {
         log::error("[Thorny] Failed to create Thorny");
-        return;
+        return nullptr;
     }
 
     menu->addChild(thorny, 1000);
     log::debug("[Thorny] Spawned Thorny");
+    return thorny;
 }
 
 void ThornyManager::removeThorny() {
@@ -447,8 +448,7 @@ void ThornyManager::onSettingChanged() {
         }
 
         if (!menu->getChildByIDRecursive("thorny-spike"_spr)) {
-            manager.spawnThorny(menu);
-            if (auto* thorny = manager.currentThorny()) {
+            if (auto* thorny = manager.spawnThorny(menu)) {
                 thorny->onEvent(ThornyEvent::EnteredMainMenu, manager.m_context);
             }
         } else if (auto* thorny = manager.currentThorny()) {
