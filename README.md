@@ -111,8 +111,12 @@ top of the script for the environment variables it reads.
 Thorny/
 ├── CMakeLists.txt
 ├── mod.json
+├── logo.png                   # mod icon (336x336)
 ├── README.md
+├── about.md                   # shown in the Geode mod page
+├── changelog.md
 ├── LICENSE
+├── AGENTS.md                  # notes for future contributors / agents
 ├── .gitignore
 ├── scripts/
 │   └── syntax-check.sh        # dev-only GCC parse check
@@ -139,6 +143,10 @@ Thorny/
         └── thorny_tail_001.png
 ```
 
+The Geode CLI packages `README.md` as the mod's `about.md`, and `logo.png` as
+the mod icon, so the copies of `README.md`, `about.md`, and `logo.png` at the
+project root are the ones you edit.
+
 ---
 
 ## How it works
@@ -154,11 +162,12 @@ idle/flying behaviour, and then plays whatever reaction matches the last event.
 Cleanup does **not** hook `MenuLayer::onExit`: `MenuLayer` does not override
 `onExit`, so it has no address in the bindings and such an override would never
 run. Instead Thorny is a self-contained node - its own `onExit` unschedules
-every callback and stops all actions. The manager additionally holds only a
-`geode::WeakRef<Thorny>` and a `geode::WeakRef<CCLayer>` to the menu, so the
-references invalidate themselves when the scene is torn down and a stale
-pointer can never be dereferenced, even if cleanup happens in an unexpected
-order.
+every callback and stops all actions. The manager does **not** cache any
+game-node pointer: it resolves the live main menu from the running scene when
+it needs one (`Thorny::findMainMenu`) and finds Thorny by node ID in that same
+scene. Caching a `WeakRef` to a game node is unsafe here - if a scene is freed
+without Geode intercepting it, the weak slot is never cleared and `lock()` can
+hand back a dangling pointer.
 
 ### Event detection
 
@@ -206,24 +215,27 @@ from repeating itself.
 - `geode::Mod::get()`, `getSettingValue<T>`, `listenForSettingChanges`,
   `getSavedValue` / `setSavedValue`, `getResourcesDir`
 - `geode::log::info/debug/warn`
-- `geode::WeakRef<T>` (`Geode/utils/cocos.hpp`)
+- `geode::queueInMainThread` (defer node work off the settings-apply stack)
 - `geode::CallFuncExt` (`Geode/utils/cocos.hpp`)
+- `geode::cast::typeinfo_cast` (`Geode/utils/cocos.hpp`)
 - `geode::file::readString` (`Geode/utils/file.hpp`)
+- `matjson` (`geode::utils::json`) for the dialogue database
 - `$on_mod(Loaded)`, `$modify`
-- `geode::cocos::` node lookup helpers (`getChildByIDRecursive`)
+- `geode::cocos::` node lookup helpers (`getChildByIDRecursive`,
+  `findFirstChildRecursive`)
 
 ## Geometry Dash / cocos2d APIs used
 
-- `cocos2d::CCLayer`, `CCNode`, `CCSprite`, `CCLabelBMFont`, `CCSpriteFrameCache`
+- `cocos2d::CCNode`, `CCLayer`, `CCSprite`, `CCLabelBMFont`, `CCTextureCache`
 - `cocos2d::extension::CCScale9Sprite`
 - Actions: `CCMoveTo`, `CCMoveBy`, `CCRotateBy`, `CCScaleTo`, `CCSequence`,
-  `CCSpawn`, `CCRepeatForever`, `CCDelayTime`, `CCEaseSineInOut`,
-  `CCEaseBackOut`
+  `CCSpawn`, `CCRepeat`, `CCRepeatForever`, `CCDelayTime`, `CCEaseSineInOut`,
+  `CCEaseSineIn`, `CCEaseBackOut`
 - `CCDirector::get()->getVisibleSize()` / `getVisibleOrigin()`
 - `CCApplication::get()->getCurrentLanguage()` / `kLanguageRussian` for `Auto`
   language detection
-- Bindings: `MenuLayer`, `PlayLayer`, `LevelEditorLayer`, `GJGameLevel`,
-  `PlayerObject`
+- Bindings: `MenuLayer`, `PlayLayer`, `LevelEditorLayer`, `LevelInfoLayer`,
+  `GJGameLevel`, `PlayerObject`
 
 ## Hooks
 
@@ -269,6 +281,8 @@ See "Lifecycle" above for why.
 
 ## Links
 
+- Downloads: <https://github.com/NormanRus/Thorny/releases>
+- Changelog: [changelog.md](changelog.md)
 - Geode SDK: <https://github.com/geode-sdk/geode>
 - Geode bindings: <https://github.com/geode-sdk/bindings>
 - Geode docs: <https://docs.geode-sdk.org/>
