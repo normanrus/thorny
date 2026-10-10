@@ -92,7 +92,9 @@ private:
 
     cocos2d::CCNode* m_bobNode = nullptr;
     cocos2d::CCSprite* m_sprite = nullptr;
-    cocos2d::CCLayer* m_bubble = nullptr;
+    // A plain CCNode, not a CCLayer: CCLayer drags in screen-sized content and
+    // ignore-anchor behaviour that can offset the bubble far from Thorny.
+    cocos2d::CCNode* m_bubble = nullptr;
     cocos2d::extension::CCScale9Sprite* m_bubbleBackground = nullptr;
     cocos2d::CCLabelBMFont* m_bubbleLabel = nullptr;
     cocos2d::CCSprite* m_bubbleTail = nullptr;

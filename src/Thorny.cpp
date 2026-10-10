@@ -130,11 +130,8 @@ void Thorny::buildSprite() {
 }
 
 void Thorny::buildBubble() {
-    m_bubble = CCLayer::create();
+    m_bubble = CCNode::create();
     m_bubble->setID("thorny-bubble"_spr);
-    // CCLayer defaults to a bottom-left anchor (it ignores the anchor for
-    // position), which would offset every child we place. Force the centre.
-    m_bubble->ignoreAnchorPointForPosition(false);
     m_bubble->setAnchorPoint(cocos2d::CCPoint(0.5f, 0.5f));
     m_bubble->setPosition(cocos2d::CCPointZero);
     // Hidden until Thorny actually says something; an empty bubble frame sitting
@@ -578,30 +575,37 @@ void Thorny::layoutBubble(std::string const& text) {
     m_bubbleLabel->setPosition(cocos2d::CCPointZero);
 
     constexpr float tailHeight = 10.0f;
-    // Anchor the bubble a little above Thorny, just past the sprite.
-    constexpr float spriteGap = 30.0f;
+    // Sit the bubble just past the sprite, using the real sprite size so the gap
+    // scales with the sprite and can never look detached.
+    float spriteHeight = 48.0f;
+    if (m_sprite) {
+        spriteHeight = m_sprite->getContentSize().height * m_sprite->getScale();
+    }
+    float gap = spriteHeight * 0.5f + 6.0f;
 
     float halfHeight = bubbleHeight / 2.0f + tailHeight;
-    bool flip = false;
 
-    if (auto* director = CCDirector::get()) {
-        auto worldOrigin = this->convertToWorldSpace(cocos2d::CCPointZero);
-        auto visibleSize = director->getVisibleSize();
-        auto visibleOrigin = director->getVisibleOrigin();
-        if (worldOrigin.y + spriteGap + halfHeight > visibleOrigin.y + visibleSize.height) {
-            flip = true;
-        }
+    // Work in the same coordinate space as the movement bounds: the visible rect
+    // expressed in the parent's space. Do not use convertToWorldSpace here - it
+    // is not reliable for a freshly added node and can throw the bubble far away.
+    refreshScreenBounds();
+    auto const& bounds = m_bounds;
+
+    bool flip = false;
+    float bubbleY = this->getPositionY() + gap + halfHeight;
+    if (bounds.size.height > 0.0f && bubbleY > bounds.origin.y + bounds.size.height) {
+        flip = true;
     }
 
     if (flip) {
         // Bubble hangs below Thorny; the tail is mirrored to point up at him.
-        m_bubble->setPosition(cocos2d::CCPoint(0.0f, -spriteGap - halfHeight));
+        m_bubble->setPosition(cocos2d::CCPoint(0.0f, -(gap + halfHeight)));
         if (m_bubbleTail) {
             m_bubbleTail->setScaleY(-1.0f);
             m_bubbleTail->setPosition(cocos2d::CCPoint(0.0f, bubbleHeight / 2.0f + tailHeight / 2.0f - 1.0f));
         }
     } else {
-        m_bubble->setPosition(cocos2d::CCPoint(0.0f, spriteGap + halfHeight));
+        m_bubble->setPosition(cocos2d::CCPoint(0.0f, gap + halfHeight));
         if (m_bubbleTail) {
             m_bubbleTail->setScaleY(1.0f);
             m_bubbleTail->setPosition(cocos2d::CCPoint(0.0f, -bubbleHeight / 2.0f - tailHeight / 2.0f + 1.0f));
@@ -609,16 +613,14 @@ void Thorny::layoutBubble(std::string const& text) {
     }
 
     // Keep the bubble from leaving the screen horizontally.
-    if (auto* director = CCDirector::get()) {
-        auto worldOrigin = this->convertToWorldSpace(cocos2d::CCPointZero);
-        auto visibleSize = director->getVisibleSize();
-        auto visibleOrigin = director->getVisibleOrigin();
+    if (bounds.size.width > 0.0f) {
         float halfWidth = bubbleWidth / 2.0f;
+        float thornyX = this->getPositionX();
         float offsetX = 0.0f;
-        if (worldOrigin.x - halfWidth < visibleOrigin.x) {
-            offsetX = visibleOrigin.x - (worldOrigin.x - halfWidth);
-        } else if (worldOrigin.x + halfWidth > visibleOrigin.x + visibleSize.width) {
-            offsetX = (visibleOrigin.x + visibleSize.width) - (worldOrigin.x + halfWidth);
+        if (thornyX - halfWidth < bounds.origin.x) {
+            offsetX = bounds.origin.x - (thornyX - halfWidth);
+        } else if (thornyX + halfWidth > bounds.origin.x + bounds.size.width) {
+            offsetX = (bounds.origin.x + bounds.size.width) - (thornyX + halfWidth);
         }
         auto pos = m_bubble->getPosition();
         m_bubble->setPosition(cocos2d::CCPoint(pos.x + offsetX, pos.y));

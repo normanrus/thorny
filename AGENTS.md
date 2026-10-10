@@ -32,7 +32,12 @@ that lives in the main menu. See README.md for user-facing docs.
   work with `geode::queueInMainThread`.
 - **MenuLayer does not override `onExit`**, so `$modify`-ing it is a no-op.
   Clean up in our own `Thorny::onExit` instead.
-- The speech bubble is a `CCLayer`; it defaults to a bottom-left anchor and
-  ignores the anchor for position. Force `setAnchorPoint(0.5, 0.5)` +
-  `ignoreAnchorPointForPosition(false)`. Hide it until a line is shown, else an
-  empty bubble frame reads as a second, detached sprite.
+- The speech bubble is a plain `CCNode`, NOT a `CCLayer`. A geometry-dash
+  `CCLayer` has screen-sized content with a centre anchor, so
+  `bubble->convertToWorldSpace()` returns `local - halfScreen`; using that to
+  clamp made the bubble fly far from Thorny. Do all bubble positioning in the
+  parent space (the same space `refreshScreenBounds` builds), never via
+  `convertToWorldSpace`. Hide it until a line is shown, else an empty bubble
+  frame reads as a second, detached sprite.
+- Sit the bubble just past the sprite using `m_sprite->getContentSize().height *
+  scale`, not a fixed pixel gap, so the gap scales with the sprite size.
