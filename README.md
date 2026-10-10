@@ -61,12 +61,13 @@ regular Geode mod.
 | --- | --- | --- | --- |
 | Thorny enabled | bool | `true` | Show the character at all. |
 | Movement | bool | `true` | Let Thorny fly around. |
+| Size | float | `1.5` | How big Thorny is drawn (`0.5`–`3.0`). |
 | Dialogue | bool | `true` | Let Thorny talk. |
 | Dialogue frequency | one-of | `Normal` | `Rare` / `Normal` / `Frequent`; scales the cooldown. |
 | Language | one-of | `Auto` | `Auto` / `English` / `Russian`. |
 
-Settings that affect live state (enabled, movement, dialogue, language) are read
-and re-applied immediately when changed.
+Settings that affect live state (enabled, movement, size, dialogue, language)
+are read and re-applied immediately when changed.
 
 ---
 

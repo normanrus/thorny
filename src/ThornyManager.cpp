@@ -92,6 +92,9 @@ void ThornyManager::initialize() {
     listenForSettingChanges<bool>("dialogue", [](bool) {
         ThornyManager::get().onSettingChanged();
     });
+    listenForSettingChanges<double>("size", [](double) {
+        ThornyManager::get().onSettingChanged();
+    });
     listenForSettingChanges<std::string>("dialogue-frequency", [](std::string) {
         ThornyManager::get().onSettingChanged();
     });
@@ -412,18 +415,27 @@ void ThornyManager::onSettingChanged() {
         return;
     }
 
-    // If the menu is currently open but Thorny is missing (e.g. he was just
-    // enabled), spawn him again.
-    if (auto menu = m_menu.lock()) {
-        if (!menu->getChildByIDRecursive("thorny-spike"_spr)) {
-            spawnThorny(menu);
-            if (auto thorny = m_thorny.lock()) {
-                thorny->onEvent(ThornyEvent::EnteredMainMenu, m_context);
-            }
-        } else if (auto thorny = m_thorny.lock()) {
-            thorny->applySettings();
+    // Setting listeners fire from inside Geode's setting-application code (and,
+    // on Android, possibly while the game is mid-frame). Starting/stopping the
+    // movement actions from there re-enters the cocos2d action manager and can
+    // crash, so all node work is deferred to the next main-thread tick.
+    geode::queueInMainThread([]() {
+        auto& manager = ThornyManager::get();
+        if (!ThornySettings::get().enabled()) {
+            return;
         }
-    }
+
+        if (auto menu = manager.m_menu.lock()) {
+            if (!menu->getChildByIDRecursive("thorny-spike"_spr)) {
+                manager.spawnThorny(menu);
+                if (auto thorny = manager.m_thorny.lock()) {
+                    thorny->onEvent(ThornyEvent::EnteredMainMenu, manager.m_context);
+                }
+            } else if (auto thorny = manager.m_thorny.lock()) {
+                thorny->applySettings();
+            }
+        }
+    });
 }
 
 void ThornyManager::onLanguageChanged() {

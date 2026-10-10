@@ -44,6 +44,12 @@ void ThornySettings::applySettings() {
     m_dialogue = mod->getSettingValue<bool>("dialogue");
     m_frequency = parseFrequency(mod->getSettingValue<std::string>("dialogue-frequency"));
     m_language = parseLanguage(mod->getSettingValue<std::string>("language"));
+    m_size = mod->getSettingValue<double>("size");
+    if (m_size < 0.25f) {
+        m_size = 0.25f;
+    } else if (m_size > 2.0f) {
+        m_size = 2.0f;
+    }
 }
 
 bool ThornySettings::useRussian() const {
@@ -70,6 +76,10 @@ float ThornySettings::frequencyMultiplier() const {
         case DialogueFrequency::Normal:
         default: return 1.0f;
     }
+}
+
+float ThornySettings::sizeScale() const {
+    return m_size;
 }
 
 } // namespace thorny

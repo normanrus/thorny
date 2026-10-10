@@ -67,7 +67,7 @@ private:
     void buildBubble();
     void refreshScreenBounds();
     void positionAtSpawn();
-    void chooseNextDestination();
+    void scheduleNextHop();
 
     // -- scheduled callbacks --
     void updateMovement(float dt);
@@ -83,7 +83,6 @@ private:
 
     // -- bubble --
     void layoutBubble(std::string const& text);
-    void scheduleBubbleHide();
 
     cocos2d::CCNode* m_bobNode = nullptr;
     cocos2d::CCSprite* m_sprite = nullptr;

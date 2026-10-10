@@ -14,8 +14,6 @@ namespace thorny {
 
 namespace {
 
-constexpr float kThornyScale = 1.0f;
-
 // How far from the screen edges Thorny must stay.
 constexpr float kPaddingX = 72.0f;
 constexpr float kPaddingY = 82.0f;
@@ -97,7 +95,12 @@ void Thorny::buildSprite() {
         m_sprite = CCSprite::create("thorny_idle_001.png"_spr);
     }
     if (m_sprite) {
-        m_sprite->setScale(kThornyScale);
+        // Force a centered anchor. Geometry Dash reapplies content-size changes
+        // to child sprites (updateAnchors), so we normalise it here and again
+        // whenever the texture changes / a reaction finishes.
+        m_sprite->setAnchorPoint(cocos2d::CCPoint(0.5f, 0.5f));
+        m_sprite->setPosition(cocos2d::CCPointZero);
+        m_sprite->setScale(ThornySettings::get().sizeScale());
         m_bobNode->addChild(m_sprite);
     } else {
         log::error("[Thorny] Could not load the Thorny sprite!");
@@ -107,7 +110,11 @@ void Thorny::buildSprite() {
 void Thorny::buildBubble() {
     m_bubble = CCLayer::create();
     m_bubble->setID("thorny-bubble"_spr);
-    m_bubble->setVisible(false);
+    // CCLayer defaults to a bottom-left anchor (it ignores the anchor for
+    // position), which would offset every child we place. Force the centre.
+    m_bubble->ignoreAnchorPointForPosition(false);
+    m_bubble->setAnchorPoint(cocos2d::CCPoint(0.5f, 0.5f));
+    m_bubble->setPosition(cocos2d::CCPointZero);
     this->addChild(m_bubble);
 
     auto bubbleTexture = CCTextureCache::sharedTextureCache()->addImage("thorny_bubble_001.png"_spr, false);
@@ -122,13 +129,18 @@ void Thorny::buildBubble() {
     }
     if (m_bubbleBackground) {
         m_bubbleBackground->setID("thorny-bubble-bg"_spr);
+        m_bubbleBackground->setAnchorPoint(cocos2d::CCPoint(0.5f, 0.5f));
         m_bubble->addChild(m_bubbleBackground, 1);
     }
 
     // Geode turns ThornyFont.ttf into a bitmap font at build time. It carries
     // both Latin and Cyrillic glyphs, so both languages render correctly.
     m_bubbleLabel = CCLabelBMFont::create("", "ThornyFont.fnt"_spr);
-    m_bubble->addChild(m_bubbleLabel, 2);
+    if (m_bubbleLabel) {
+        m_bubbleLabel->setAnchorPoint(cocos2d::CCPoint(0.5f, 0.5f));
+        m_bubbleLabel->setAlignment(cocos2d::kCCTextAlignmentCenter);
+        m_bubble->addChild(m_bubbleLabel, 2);
+    }
 
     auto tailTexture = CCTextureCache::sharedTextureCache()->addImage("thorny_tail_001.png"_spr, false);
     if (tailTexture) {
@@ -139,6 +151,7 @@ void Thorny::buildBubble() {
     }
     if (m_bubbleTail) {
         m_bubbleTail->setID("thorny-bubble-tail"_spr);
+        m_bubbleTail->setAnchorPoint(cocos2d::CCPoint(0.5f, 0.5f));
         m_bubble->addChild(m_bubbleTail, 0);
     }
 }
@@ -148,17 +161,17 @@ void Thorny::onEnter() {
 
     // Place Thorny before anything else: with movement disabled he would
     // otherwise stay at the parent's origin, i.e. the bottom-left corner.
-    refreshScreenBounds();
+    // By onEnter the node is inside the running scene, so the visible bounds
+    // (and the parent offset) are reliable.
     positionAtSpawn();
+    startBob();
 
     this->schedule(schedule_selector(Thorny::updateMovement), 0.0f);
     this->schedule(schedule_selector(Thorny::updateChatter), 1.0f);
-
-    startBob();
-    startMovement();
 }
 
 void Thorny::positionAtSpawn() {
+    refreshScreenBounds();
     if (m_bounds.size.width > 0.0f) {
         float startX = randomRange(m_bounds.origin.x, m_bounds.origin.x + m_bounds.size.width);
         float startY = randomRange(m_bounds.origin.y, m_bounds.origin.y + m_bounds.size.height);
@@ -166,8 +179,8 @@ void Thorny::positionAtSpawn() {
         return;
     }
 
-    // Bounds are not known yet (very early frame). Park Thorny in the middle of
-    // the visible area rather than the parent's (0,0) corner.
+    // Bounds are not known yet (very early frame / no parent). Park Thorny in
+    // the middle of the visible area rather than the parent's (0,0) corner.
     auto* director = CCDirector::get();
     if (!director) {
         return;
@@ -232,7 +245,7 @@ void Thorny::refreshScreenBounds() {
     m_bounds = cocos2d::CCRect(minX, minY, maxX - minX, maxY - minY);
 }
 
-void Thorny::chooseNextDestination() {
+void Thorny::scheduleNextHop() {
     if (m_bounds.size.width <= 0.0f) {
         return;
     }
@@ -260,8 +273,8 @@ void Thorny::chooseNextDestination() {
     auto eased = CCEaseSineInOut::create(move);
     // IMPORTANT: do NOT cancel our own action from inside this callback. The
     // sequence is still the action being updated; releasing it here would free
-    // the running action mid-update and crash. We only flag that the next hop
-    // is due and let updateMovement() schedule it after the pump has unwound.
+    // the running action mid-update and crash. We only flag that the next hop is
+    // due and let updateMovement() schedule it after the pump has unwound.
     auto done = CallFuncExt::create([this]() {
         m_pendingDestination = true;
     });
@@ -288,7 +301,7 @@ void Thorny::updateMovement(float dt) {
         m_pendingDestination = false;
         // Re-check bounds each hop in case the scene size changed.
         refreshScreenBounds();
-        chooseNextDestination();
+        scheduleNextHop();
     }
 }
 
@@ -299,14 +312,16 @@ void Thorny::startMovement() {
     if (!ThornySettings::get().movementEnabled()) {
         return;
     }
+    // The node must be inside the scene graph before we search up for bounds.
+    if (!this->isRunning()) {
+        return;
+    }
     m_movementStarted = true;
     m_pendingDestination = false;
     refreshScreenBounds();
 
-    // Position is handled by positionAtSpawn(); here we simply start hopping.
-    // If the bounds only became known now, the first hop flies Thorny into them.
     setState(ThornyState::Flying);
-    chooseNextDestination();
+    scheduleNextHop();
 }
 
 void Thorny::stopMovement() {
@@ -337,6 +352,10 @@ void Thorny::setTexture(std::string const& name) {
     auto texture = CCTextureCache::sharedTextureCache()->addImage(name.c_str(), false);
     if (texture) {
         m_sprite->setTexture(texture);
+        // Changing the texture invalidates the sprite's rect / anchor; GD may
+        // re-centre children, so put it back where it belongs.
+        m_sprite->setAnchorPoint(cocos2d::CCPoint(0.5f, 0.5f));
+        m_sprite->setPosition(cocos2d::CCPointZero);
     }
 }
 
@@ -376,15 +395,14 @@ void Thorny::playReaction(ThornyState state) {
 
     switch (state) {
         case ThornyState::Happy: {
-            // Two quick hops with a full spin.
+            // Two quick hops with a full spin. The final rotation is a multiple
+            // of 360 so the resting orientation is unchanged.
             auto jumpUp = CCMoveBy::create(0.16f, cocos2d::CCPoint(0.0f, 22.0f));
             auto jumpDown = CCMoveBy::create(0.16f, cocos2d::CCPoint(0.0f, -22.0f));
             auto hop = CCSequence::create(jumpUp, jumpDown, nullptr);
-            auto spinBack = CCRotateBy::create(0.01f, -720.0f);
             reaction = CCSequence::create(
                 CCRepeat::create(hop, 2),
                 CCRotateBy::create(0.5f, 720.0f),
-                spinBack,
                 nullptr
             );
             break;
@@ -394,11 +412,9 @@ void Thorny::playReaction(ThornyState state) {
             auto left = CCRotateBy::create(0.05f, -18.0f);
             auto right = CCRotateBy::create(0.05f, 18.0f);
             auto shake = CCSequence::create(left, right, nullptr);
-            auto spinBack = CCRotateBy::create(0.01f, -540.0f);
             reaction = CCSequence::create(
                 CCRepeat::create(shake, 4),
-                CCRotateBy::create(0.5f, 540.0f),
-                spinBack,
+                CCRotateBy::create(0.5f, 360.0f),
                 nullptr
             );
             break;
@@ -416,8 +432,9 @@ void Thorny::playReaction(ThornyState state) {
             break;
         }
         case ThornyState::Sleeping: {
-            auto shrink = CCScaleTo::create(0.6f, 0.85f * kThornyScale);
-            auto back = CCScaleTo::create(0.6f, kThornyScale);
+            float base = ThornySettings::get().sizeScale();
+            auto shrink = CCScaleTo::create(0.6f, 0.85f * base);
+            auto back = CCScaleTo::create(0.6f, base);
             reaction = CCSequence::create(
                 CCEaseSineInOut::create(shrink),
                 CCDelayTime::create(0.3f),
@@ -427,8 +444,9 @@ void Thorny::playReaction(ThornyState state) {
             break;
         }
         default: {
-            auto pulse = CCScaleTo::create(0.12f, 1.15f * kThornyScale);
-            auto back = CCScaleTo::create(0.14f, kThornyScale);
+            float base = ThornySettings::get().sizeScale();
+            auto pulse = CCScaleTo::create(0.12f, 1.15f * base);
+            auto back = CCScaleTo::create(0.14f, base);
             reaction = CCSequence::create(pulse, back, nullptr);
             break;
         }
@@ -442,6 +460,14 @@ void Thorny::playReaction(ThornyState state) {
     auto sequence = CCSequence::create(
         reaction,
         CallFuncExt::create([this, finished]() {
+            // A reaction moves/scales the sprite directly; restore the neutral
+            // transform so the idle bob and future reactions start clean, and
+            // re-assert the anchor in case GD re-centred the child meanwhile.
+            if (m_sprite) {
+                m_sprite->setAnchorPoint(cocos2d::CCPoint(0.5f, 0.5f));
+                m_sprite->setPosition(cocos2d::CCPointZero);
+                m_sprite->setScale(ThornySettings::get().sizeScale());
+            }
             if (m_state == finished) {
                 setState(ThornyState::Flying);
             }
@@ -508,6 +534,11 @@ void Thorny::layoutBubble(std::string const& text) {
         return;
     }
 
+    // Reset any scale left over from a previous layout / animation so the
+    // measurements below are correct.
+    m_bubble->setScaleX(1.0f);
+    m_bubble->setScaleY(1.0f);
+
     m_bubbleLabel->setString(text.c_str());
     m_bubbleLabel->limitLabelWidth(180.0f, 0.65f, 0.35f);
     auto labelSize = m_bubbleLabel->getScaledContentSize();
@@ -522,36 +553,32 @@ void Thorny::layoutBubble(std::string const& text) {
     m_bubbleLabel->setPosition(cocos2d::CCPointZero);
 
     constexpr float tailHeight = 10.0f;
-    if (m_bubbleTail) {
-        // Tail sits flush under the bubble rectangle.
-        m_bubbleTail->setPosition(cocos2d::CCPoint(
-            0.0f, -bubbleHeight / 2.0f - tailHeight / 2.0f + 1.0f));
-    }
+    // Anchor the bubble a little above Thorny, just past the sprite.
+    constexpr float spriteGap = 30.0f;
 
     float halfHeight = bubbleHeight / 2.0f + tailHeight;
-    float bubbleY = 30.0f + halfHeight + 4.0f;
     bool flip = false;
 
     if (auto* director = CCDirector::get()) {
         auto worldOrigin = this->convertToWorldSpace(cocos2d::CCPointZero);
         auto visibleSize = director->getVisibleSize();
         auto visibleOrigin = director->getVisibleOrigin();
-        if (worldOrigin.y + bubbleY + halfHeight > visibleOrigin.y + visibleSize.height) {
+        if (worldOrigin.y + spriteGap + halfHeight > visibleOrigin.y + visibleSize.height) {
             flip = true;
         }
     }
 
     if (flip) {
-        // Mirror vertically so the tail points down at Thorny.
-        m_bubble->setScaleY(-1.0f);
-        m_bubble->setPosition(cocos2d::CCPoint(0.0f, -30.0f - halfHeight - 4.0f));
+        // Bubble hangs below Thorny; the tail is mirrored to point up at him.
+        m_bubble->setPosition(cocos2d::CCPoint(0.0f, -spriteGap - halfHeight));
         if (m_bubbleTail) {
+            m_bubbleTail->setScaleY(-1.0f);
             m_bubbleTail->setPosition(cocos2d::CCPoint(0.0f, bubbleHeight / 2.0f + tailHeight / 2.0f - 1.0f));
         }
     } else {
-        m_bubble->setScaleY(1.0f);
-        m_bubble->setPosition(cocos2d::CCPoint(0.0f, bubbleY));
+        m_bubble->setPosition(cocos2d::CCPoint(0.0f, spriteGap + halfHeight));
         if (m_bubbleTail) {
+            m_bubbleTail->setScaleY(1.0f);
             m_bubbleTail->setPosition(cocos2d::CCPoint(0.0f, -bubbleHeight / 2.0f - tailHeight / 2.0f + 1.0f));
         }
     }
@@ -583,20 +610,13 @@ void Thorny::say(std::string const& text) {
 
     layoutBubble(text);
     m_bubble->setVisible(true);
+
+    // One action drives the bubble for its whole life: pop in, hold, shrink
+    // out. Splitting it across two runAction() calls would cancel the pop-in.
     m_bubble->stopAllActions();
     m_bubble->setScale(0.6f);
-    m_bubble->runAction(CCEaseBackOut::create(CCScaleTo::create(0.18f, 1.0f)));
-
-    scheduleBubbleHide();
-    setState(ThornyState::Talking);
-}
-
-void Thorny::scheduleBubbleHide() {
-    if (!m_bubble) {
-        return;
-    }
-    m_bubble->stopAllActions();
     m_bubble->runAction(CCSequence::create(
+        CCEaseBackOut::create(CCScaleTo::create(0.18f, 1.0f)),
         CCDelayTime::create(4.5f),
         CCEaseSineIn::create(CCScaleTo::create(0.25f, 0.6f)),
         CallFuncExt::create([this]() {
@@ -607,6 +627,8 @@ void Thorny::scheduleBubbleHide() {
         }),
         nullptr
     ));
+
+    setState(ThornyState::Talking);
 }
 
 void Thorny::hideBubble() {
@@ -649,6 +671,18 @@ void Thorny::onEvent(ThornyEvent event, ThornyContext const& context) {
 }
 
 void Thorny::applySettings() {
+    if (!m_sprite) {
+        return;
+    }
+
+    // Re-apply size, keeping whichever reaction/pulse scale is appropriate.
+    float base = ThornySettings::get().sizeScale();
+    if (m_sprite->getScale() < base * 0.99f || m_sprite->getScale() > base * 1.01f) {
+        if (!m_sprite->getActionByTag(kTagReaction)) {
+            m_sprite->setScale(base);
+        }
+    }
+
     if (ThornySettings::get().movementEnabled()) {
         if (!m_movementStarted) {
             startMovement();

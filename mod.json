@@ -8,7 +8,7 @@
 	},
 	"id": "norman.thorny",
 	"name": "Thorny",
-	"version": "v1.0.1",
+	"version": "v1.0.2",
 	"developer": "NormanRus",
 	"description": "A little spike companion that reacts to what you do in Geometry Dash.",
 	"repository": "https://github.com/NormanRus/Thorny",
@@ -28,6 +28,15 @@
 			"name": "Movement",
 			"description": "Let Thorny fly around the main menu.",
 			"default": true
+		},
+		"size": {
+			"type": "float",
+			"name": "Size",
+			"description": "How big Thorny is drawn. 1.0 is the original sprite size.",
+			"default": 1.5,
+			"min": 0.5,
+			"max": 3.0,
+			"controls": "slider"
 		},
 		"dialogue-title": {
 			"type": "title",

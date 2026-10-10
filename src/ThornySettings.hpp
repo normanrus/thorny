@@ -41,6 +41,9 @@ public:
     // Thorny talks more often.
     float frequencyMultiplier() const;
 
+    // Scale applied to the Thorny sprite and his speech bubble.
+    float sizeScale() const;
+
 private:
     ThornySettings() = default;
 
@@ -49,6 +52,7 @@ private:
     bool m_dialogue = true;
     DialogueFrequency m_frequency = DialogueFrequency::Normal;
     ThornyLanguage m_language = ThornyLanguage::Auto;
+    float m_size = 1.5f;
 };
 
 } // namespace thorny
